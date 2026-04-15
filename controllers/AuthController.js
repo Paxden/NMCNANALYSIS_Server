@@ -10,7 +10,7 @@ export const signup = async (req, res) => {
 
   try {
     // Validate input
-    if (!email || !password || !fullName ) {
+    if (!email || !password || !fullName) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -21,7 +21,7 @@ export const signup = async (req, res) => {
     }
 
     // Create user
-    const user = await User.create({ email, password, fullName,  });
+    const user = await User.create({ email, password, fullName });
 
     // Start session
     req.session.userId = user._id;
@@ -31,76 +31,12 @@ export const signup = async (req, res) => {
       user: {
         id: user._id,
         email: user.email,
-        fullName: user.fullName
+        fullName: user.fullName,
       },
     });
   } catch (err) {
     console.error("Signup error:", err);
     return res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ==========================
-// 🔐 Login
-// ==========================
-export const login = async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // Validate input
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password required" });
-    }
-
-    // ⚠️ IMPORTANT: include password explicitly
-    const user = await User.findOne({ email }).select("+password");
-
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Compare password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // Start session
-    req.session.userId = user._id;
-
-    return res.json({
-      message: "Login successful",
-      user: {
-        id: user._id,
-        email: user.email,
-        fullName: user.fullName,
-      },
-    });
-  } catch (err) {
-    console.error("Login error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
-
-// ==========================
-// 🚪 Logout
-// ==========================
-export const logout = async (req, res, next) => {
-  try {
-    await new Promise((resolve, reject) => {
-      req.session.destroy((err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-
-    // ⚠️ Use your custom session cookie name
-    res.clearCookie("school_portal_sid");
-
-    return res.json({ message: "Logout successful" });
-  } catch (err) {
-    console.error("Logout error:", err);
-    next(err);
   }
 };
 
@@ -132,20 +68,98 @@ export const getProfile = async (req, res) => {
   }
 };
 
-// Check Auth
-export const checkAuth = async (req, res) => {
+// ==========================
+// 🔐 LOGIN CONTROLLER
+// ==========================
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+
   try {
-    if (!req.session.userId) {
-      return res.status(401).json({ isAuthenticated: false });
+    // ==========================
+    // VALIDATION
+    // ==========================
+    if (!email || !password) {
+      return res.status(400).json({
+        message: "Email and password required",
+      });
     }
 
-    const user = await User.findById(req.session.userId).select("-password");
+    // ==========================
+    // FIND USER
+    // ==========================
+    const user = await User.findOne({ email }).select("+password");
 
-    res.json({
-      isAuthenticated: true,
-      user,
+    if (!user) {
+      return res.status(400).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    // ==========================
+    // PASSWORD CHECK
+    // ==========================
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
+      return res.status(400).json({
+        message: "Invalid credentials",
+      });
+    }
+
+    // ==========================
+    // CREATE SESSION
+    // ==========================
+    req.session.userId = user._id;
+
+    // IMPORTANT: force session save in production
+    await req.session.save();
+
+    // ==========================
+    // RESPONSE
+    // ==========================
+    return res.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        email: user.email,
+        fullName: user.fullName,
+      },
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Login error:", err);
+    return res.status(500).json({
+      message: "Server error",
+    });
   }
+};
+
+// ==========================
+// 🔓 CHECK AUTH
+// ==========================
+export const checkAuth = (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ user: null });
+    }
+
+    return res.json({
+      user: {
+        id: req.session.userId,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      message: "Server error",
+    });
+  }
+};
+
+// ==========================
+// 🚪 LOGOUT
+// ==========================
+export const logout = (req, res) => {
+  req.session.destroy(() => {
+    res.json({ message: "Logged out successfully" });
+  });
 };

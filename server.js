@@ -23,6 +23,7 @@ app.use(express.urlencoded({ extended: true })); // Parses URL-encoded bodies
 const allowedOrigins = [
   "http://localhost:5173",
   "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
+  "https://nmcnanalysis-client.vercel.app",
 ];
 
 app.use(

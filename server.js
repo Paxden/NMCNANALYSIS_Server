@@ -22,7 +22,10 @@ app.use(express.urlencoded({ extended: true })); // Parses URL-encoded bodies
 
 app.use(
   cors({
-    origin: "http://localhost:5174",
+    origin: [
+      "http://localhost:5174",
+      "https://nmcnanalysis-client.vercel.app/",
+    ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

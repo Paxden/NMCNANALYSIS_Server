@@ -23,8 +23,10 @@ app.use(express.urlencoded({ extended: true })); // Parses URL-encoded bodies
 app.use(
   cors({
     origin: [
-      "http://localhost:5174",
-      "https://nmcnanalysis-client.vercel.app/",
+      "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
+      "https://nmcnanalysis-client.vercel.app", // Your main domain
+      "http://localhost:3000", // For local development
+      "http://localhost:5173", // For Vite development
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],

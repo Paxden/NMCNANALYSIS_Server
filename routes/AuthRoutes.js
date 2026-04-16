@@ -11,6 +11,7 @@ import {
 import { auth } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
+const app = express();
 
 // ==========================
 // 🔓 Public Routes

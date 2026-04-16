@@ -5,16 +5,16 @@ import {
   getUserExams,
   getExamById,
 } from "../controllers/examController.js";
-import { auth } from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
 // Get all exams for the user
-router.get("/", getUserExams);
+router.get("/", protect, getUserExams);
 
 // Get single exam
 router.get("/:id", getExamById);
 
-router.post("/upload", auth, upload.single("file"), uploadExamResults);
+router.post("/upload", protect, upload.single("file"), uploadExamResults);
 
 export default router;

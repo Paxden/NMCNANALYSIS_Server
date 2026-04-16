@@ -8,11 +8,11 @@ import {
   getScoreDistribution,
   compareExams,
 } from "../controllers/analyticsController.js";
-import { auth } from "../middleware/AuthMiddleware.js";
+import { protect } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
-router.use(auth); // 🔥 protect ALL analytics routes
+router.use(protect); // 🔥 protect ALL analytics routes
 
 router.get("/stats", getDashboardStats);
 router.get("/top-candidates", getTopCandidates);

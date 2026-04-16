@@ -1,19 +1,20 @@
-// middleware/AuthMiddleware.js
+import jwt from "jsonwebtoken";
 
-export const auth = (req, res, next) => {
+export const protect = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Not authorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
   try {
-    console.log("🔐 Auth middleware - Session:", req.session);
-    console.log("SESSION:", req.session);
-    console.log("COOKIES:", req.headers.cookie);
-    if (req.session && req.session.userId) {
-      console.log("✅ Auth passed");
-      return next();
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    console.log("❌ Auth failed - No session");
-    return res.status(401).json({ message: "Unauthorized" });
+    req.user = decoded;
+    next();
   } catch (err) {
-    console.error("Auth middleware error:", err);
-    return res.status(500).json({ message: "Server error" });
+    return res.status(401).json({ message: "Invalid token" });
   }
 };

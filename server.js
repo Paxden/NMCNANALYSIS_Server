@@ -1,8 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import session from "express-session";
-import MongoStore from "connect-mongo";
 import connectDB from "./config/db.js";
 
 // Routes
@@ -17,77 +15,67 @@ connectDB();
 const app = express();
 
 // ==========================
-// 🔐 BODY PARSERS
+// 🔧 MIDDLEWARE
 // ==========================
+
+// Parse JSON
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ==========================
-// 🌐 CORS (PRODUCTION SAFE)
+// 🌍 CORS (VERY IMPORTANT)
 // ==========================
-const allowedOrigins = [
-  "http://localhost:5173",
-  "https://nmcnanalysis-client.vercel.app",
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("Not allowed by CORS: " + origin));
-    },
-    credentials: true,
-  }),
-);
-
-// ==========================
-// 🔐 SESSION CONFIG (CRITICAL FIX)
-// ==========================
-app.set("trust proxy", 1);
-
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-    }),
-    cookie: {
-      secure: true,
-      sameSite: "none",
-      httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24,
-       domain: ".onrender.com",
-    },
-  }),
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://nmcnanalysis-client.vercel.app",
+      "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
 );
 
 // ==========================
 // 🧪 HEALTH CHECK
 // ==========================
 app.get("/", (req, res) => {
-  res.send("API running...");
+  res.send("🚀 NMCN Analytics API running...");
 });
 
 // ==========================
-// 🧩 ROUTES
+// 📡 ROUTES
 // ==========================
 app.use("/api/auth", authRoutes);
 app.use("/api/exams", examRoutes);
-app.use("/api/analytics", analyticsRoutes);
 app.use("/api/results", resultRoutes);
+app.use("/api/analytics", analyticsRoutes);
+
+// ==========================
+// ❌ 404 HANDLER
+// ==========================
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
+});
+
+// ==========================
+// ⚠️ GLOBAL ERROR HANDLER
+// ==========================
+app.use((err, req, res, next) => {
+  console.error("🔥 SERVER ERROR:", err.message);
+
+  res.status(500).json({
+    message: "Internal server error",
+  });
+});
 
 // ==========================
 // 🚀 START SERVER
 // ==========================
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
+);

@@ -3,7 +3,8 @@
 export const auth = (req, res, next) => {
   try {
     console.log("🔐 Auth middleware - Session:", req.session);
-
+    console.log("SESSION:", req.session);
+    console.log("COOKIES:", req.headers.cookie);
     if (req.session && req.session.userId) {
       console.log("✅ Auth passed");
       return next();

@@ -35,17 +35,14 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (
-        allowedOrigins.includes(origin) ||
-        origin.endsWith(".vercel.app")
-      ) {
+      if (allowedOrigins.includes(origin) || origin.endsWith(".vercel.app")) {
         return callback(null, true);
       }
 
       return callback(new Error("Not allowed by CORS: " + origin));
     },
     credentials: true,
-  })
+  }),
 );
 
 // ==========================
@@ -60,15 +57,14 @@ app.use(
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
-      collectionName: "sessions",
     }),
     cookie: {
-      secure: true,       // MUST be true on Render (HTTPS)
+      secure: true,
+      sameSite: "none",
       httpOnly: true,
-      sameSite: "none",   // REQUIRED for Vercel ↔ Render
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      maxAge: 1000 * 60 * 60 * 24,
     },
-  })
+  }),
 );
 
 // ==========================

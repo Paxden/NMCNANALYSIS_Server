@@ -25,4 +25,14 @@ router.get("/check", checkAuth);
 router.post("/logout", auth, logout);
 router.get("/profile", auth, getProfile);
 
+app.get("/api/test-cookie", (req, res) => {
+  console.log("COOKIE HEADER:", req.headers.cookie);
+  console.log("SESSION:", req.session);
+
+  res.json({
+    cookie: req.headers.cookie,
+    session: req.session,
+  });
+});
+
 export default router;

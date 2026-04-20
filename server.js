@@ -25,7 +25,6 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
-import cors from "cors";
 
 const allowedOrigins = [
   "http://localhost:5173",

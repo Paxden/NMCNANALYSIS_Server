@@ -25,18 +25,35 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
+// Allow multiple origins with a function
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://nmcnanalysis-client.vercel.app",
+  "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://nmcnanalysis-client.vercel.app",
-      "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
-    ],
-    methods: ["GET", "POST", "PUT", "DELETE"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("Blocked origin:", origin);
+        callback(null, false); // Change to false to block, or use true to allow all
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Add OPTIONS
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+    credentials: true, // If you're using cookies/sessions
+  }),
 );
+
+// Handle preflight requests explicitly
+app.options("*", cors());
 
 // ==========================
 // 🧪 HEALTH CHECK
@@ -76,6 +93,4 @@ app.use((err, req, res, next) => {
 // ==========================
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

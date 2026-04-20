@@ -25,17 +25,12 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "https://nmcnanalysis-client.vercel.app",
-      "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
-    ],
-    credentials: true,
-  }),
-);
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+
 // ==========================
 // 🧪 HEALTH CHECK
 // ==========================

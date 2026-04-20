@@ -52,8 +52,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// ✅ Proper preflight handling
-app.options("*", cors(corsOptions));
+
 // ==========================
 // 🧪 HEALTH CHECK
 // ==========================

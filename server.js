@@ -26,8 +26,9 @@ app.use(express.urlencoded({ extended: true }));
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: "*",
+  methods: "*",
+  allowedHeaders: "*"
 }));
 
 

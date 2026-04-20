@@ -25,36 +25,36 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
-// Allow multiple origins with a function
+import cors from "cors";
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://nmcnanalysis-client.vercel.app/login",
   "https://nmcnanalysis-client.vercel.app",
   "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps or curl)
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.log("Blocked origin:", origin);
-        callback(null, false); // Change to false to block, or use true to allow all
-      }
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // Add OPTIONS
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true, // If you're using cookies/sessions
-  }),
-);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      console.log("❌ Blocked origin:", origin);
+      return callback(new Error("Not allowed by CORS")); // <-- IMPORTANT
+    }
+  },
+  credentials: true, // ✅ REQUIRED if using cookies
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
-// Handle preflight requests explicitly
-app.options("/*path", cors()); 
+app.use(cors(corsOptions));
 
+// ✅ Proper preflight handling
+app.options("*", cors(corsOptions));
 // ==========================
 // 🧪 HEALTH CHECK
 // ==========================

@@ -10,64 +10,129 @@ import resultRoutes from "./routes/resultRoutes.js";
 import authRoutes from "./routes/AuthRoutes.js";
 
 dotenv.config();
-connectDB();
 
 const app = express();
 
-// ==========================
-// 🔧 MIDDLEWARE
-// ==========================
+/**
+ * ==========================
+ * 🔐 ENV VALIDATION (FAIL FAST)
+ * ==========================
+ */
+if (!process.env.PORT) {
+  console.warn("⚠️ PORT not defined, defaulting to 5001");
+}
 
-// Parse JSON
+if (!process.env.MONGO_URI) {
+  console.error("❌ MONGO_URI missing in environment variables");
+  process.exit(1);
+}
+
+/**
+ * ==========================
+ * 🧠 DATABASE CONNECTION
+ * ==========================
+ */
+connectDB()
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => {
+    console.error("❌ MongoDB connection failed:", err.message);
+    process.exit(1);
+  });
+
+/**
+ * ==========================
+ * 🌍 CORS CONFIG (PRODUCTION SAFE)
+ * ==========================
+ */
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://nmcnanalysis-client.vercel.app",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // allow server-to-server or Postman
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
+
+/**
+ * ==========================
+ * 🧾 BODY PARSING
+ * ==========================
+ */
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==========================
-// 🌍 CORS (VERY IMPORTANT)
-// ==========================
-app.use(cors({
-  origin: "*",
-  methods: "*",
-  allowedHeaders: "*"
-}));
-
-
-// ==========================
-// 🧪 HEALTH CHECK
-// ==========================
+/**
+ * ==========================
+ * 🧪 HEALTH CHECK
+ * ==========================
+ */
 app.get("/", (req, res) => {
-  res.send("🚀 NMCN Analytics API running...");
+  res.status(200).json({
+    status: "OK",
+    message: "🚀 NMCN Analytics API is running",
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// ==========================
-// 📡 ROUTES
-// ==========================
+/**
+ * ==========================
+ * 📡 ROUTES
+ * ==========================
+ */
 app.use("/api/auth", authRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/results", resultRoutes);
 app.use("/api/analytics", analyticsRoutes);
 
-// ==========================
-// ❌ 404 HANDLER
-// ==========================
+/**
+ * ==========================
+ * ❌ 404 HANDLER
+ * ==========================
+ */
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
-// ==========================
-// ⚠️ GLOBAL ERROR HANDLER
-// ==========================
+/**
+ * ==========================
+ * ⚠️ GLOBAL ERROR HANDLER
+ * ==========================
+ */
 app.use((err, req, res, next) => {
-  console.error("🔥 SERVER ERROR:", err.message);
+  console.error("🔥 SERVER ERROR:", err);
 
   res.status(500).json({
+    success: false,
     message: "Internal server error",
   });
 });
 
-// ==========================
-// 🚀 START SERVER
-// ==========================
+/**
+ * ==========================
+ * 🚀 START SERVER (RENDER SAFE)
+ * ==========================
+ */
 const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});

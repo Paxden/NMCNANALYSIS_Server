@@ -25,34 +25,17 @@ app.use(express.urlencoded({ extended: true }));
 // ==========================
 // 🌍 CORS (VERY IMPORTANT)
 // ==========================
-
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "https://nmcnanalysis-client.vercel.app/login",
-  "https://nmcnanalysis-client.vercel.app",
-  "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      console.log("❌ Blocked origin:", origin);
-      return callback(new Error("Not allowed by CORS")); // <-- IMPORTANT
-    }
-  },
-  credentials: true, // ✅ REQUIRED if using cookies
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-};
-
-app.use(cors(corsOptions));
-
-
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://nmcnanalysis-client.vercel.app",
+      "https://nmcnanalysis-client-515a2dr14-paxdens-projects.vercel.app",
+    ],
+    credentials: true,
+  }),
+);
 // ==========================
 // 🧪 HEALTH CHECK
 // ==========================

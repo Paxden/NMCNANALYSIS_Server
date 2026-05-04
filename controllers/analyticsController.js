@@ -1,150 +1,53 @@
 import Result from "../models/Result.js";
 import mongoose from "mongoose";
 
+const toObjectId = (id) => new mongoose.Types.ObjectId(id);
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+const PASS_MARK = 50;
+
+// ==============================
+// TOP CANDIDATES (GLOBAL)
+// ==============================
 export const getTopCandidates = async (req, res) => {
   try {
     const { examId, limit = 10 } = req.query;
 
-    // Validate examId
-    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
+    if (!examId || !isValidId(examId)) {
       return res.status(400).json({ message: "Valid examId is required" });
     }
 
     const top = await Result.find({
-      examId: new mongoose.Types.ObjectId(examId),
+      examId: toObjectId(examId),
     })
-      .sort({ score: -1 })
+      .sort({ average: -1 })
       .limit(Number(limit))
-      .lean(); // Use lean() for better performance
+      .lean();
 
     res.json(top);
   } catch (err) {
-    console.error("Error in getTopCandidates:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch top candidates", error: err.message });
+    console.error("getTopCandidates error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-export const getTopSchools = async (req, res) => {
-  try {
-    const { examId } = req.query;
-
-    // Validate examId
-    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
-      return res.status(400).json({ message: "Valid examId is required" });
-    }
-
-    const schools = await Result.aggregate([
-      { $match: { examId: new mongoose.Types.ObjectId(examId) } },
-      {
-        $group: {
-          _id: "$school",
-          avgScore: { $avg: "$score" },
-          totalStudents: { $sum: 1 },
-        },
-      },
-      { $sort: { avgScore: -1 } },
-      { $limit: 10 },
-    ]);
-
-    res.json(schools);
-  } catch (err) {
-    console.error("Error in getTopSchools:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch schools", error: err.message });
-  }
-};
-
-export const getStatePerformance = async (req, res) => {
-  try {
-    const { examId } = req.query;
-
-    // Validate examId
-    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
-      return res.status(400).json({ message: "Valid examId is required" });
-    }
-
-    const states = await Result.aggregate([
-      { $match: { examId: new mongoose.Types.ObjectId(examId) } },
-      {
-        $group: {
-          _id: "$state",
-          total: { $sum: 1 },
-          pass: {
-            $sum: { $cond: [{ $eq: ["$status", "Pass"] }, 1, 0] },
-          },
-        },
-      },
-      {
-        $project: {
-          state: "$_id",
-          passRate: {
-            $multiply: [{ $divide: ["$pass", { $max: ["$total", 1] }] }, 100], // Avoid division by zero
-          },
-          total: 1,
-          passed: "$pass",
-        },
-      },
-      { $sort: { passRate: -1 } },
-    ]);
-
-    res.json(states);
-  } catch (err) {
-    console.error("Error in getStatePerformance:", err);
-    res.status(500).json({
-      message: "Failed to fetch state performance",
-      error: err.message,
-    });
-  }
-};
-
-export const getTopCentres = async (req, res) => {
-  try {
-    const { examId } = req.query;
-
-    // Validate examId
-    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
-      return res.status(400).json({ message: "Valid examId is required" });
-    }
-
-    const centres = await Result.aggregate([
-      { $match: { examId: new mongoose.Types.ObjectId(examId) } },
-      {
-        $group: {
-          _id: "$centre",
-          avgScore: { $avg: "$score" },
-          total: { $sum: 1 },
-        },
-      },
-      { $sort: { avgScore: -1 } },
-      { $limit: 10 },
-    ]);
-
-    res.json(centres);
-  } catch (err) {
-    console.error("Error in getTopCentres:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch centres", error: err.message });
-  }
-};
-
+// ==============================
+// SCORE DISTRIBUTION
+// ==============================
 export const getScoreDistribution = async (req, res) => {
   try {
     const { examId } = req.query;
 
-    // Validate examId
-    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
+    if (!examId || !isValidId(examId)) {
       return res.status(400).json({ message: "Valid examId is required" });
     }
 
     const distribution = await Result.aggregate([
-      { $match: { examId: new mongoose.Types.ObjectId(examId) } },
+      { $match: { examId: toObjectId(examId) } },
       {
         $bucket: {
-          groupBy: "$score",
+          groupBy: "$average",
           boundaries: [0, 40, 50, 60, 70, 100],
           default: "Others",
           output: {
@@ -154,46 +57,199 @@ export const getScoreDistribution = async (req, res) => {
       },
     ]);
 
-    // Format the response to make it more readable
-    const formattedDistribution = distribution.map((item) => ({
-      range:
-        item._id === "Others"
-          ? "Others"
-          : `${item._id}-${item._id === 70 ? 100 : item._id === 0 ? 40 : item._id === 40 ? 50 : item._id === 50 ? 60 : 70}`,
-      count: item.count,
-      minScore: item._id === "Others" ? null : item._id,
-      maxScore:
-        item._id === "Others"
-          ? null
-          : item._id === 70
-            ? 100
-            : item._id === 0
-              ? 40
-              : item._id === 40
-                ? 50
-                : item._id === 50
-                  ? 60
-                  : 70,
-    }));
-
-    res.json(formattedDistribution);
+    res.json(distribution);
   } catch (err) {
-    console.error("Error in getScoreDistribution:", err);
-    res
-      .status(500)
-      .json({ message: "Failed to fetch distribution", error: err.message });
+    console.error("getScoreDistribution error:", err);
+    res.status(500).json({ message: err.message });
   }
 };
 
 // ==============================
-// UTILITY
-// ==============================
-const toObjectId = (id) => new mongoose.Types.ObjectId(id);
-
-// ==============================
-// MAIN DASHBOARD STATS
+// DASHBOARD STATS
 // ==============================
 export const getDashboardStats = async (req, res) => {
+  try {
+    const { examId } = req.query;
+
+    if (!examId || !isValidId(examId)) {
+      return res.status(400).json({ message: "Valid examId is required" });
+    }
+
+    const match = { examId: toObjectId(examId) };
+
+    const stats = await Result.aggregate([
+      { $match: match },
+
+      {
+        $group: {
+          _id: null,
+          totalCandidates: { $sum: 1 },
+          avgScore: { $avg: "$average" },
+          maxScore: { $max: "$average" },
+          minScore: { $min: "$average" },
+
+          passCount: {
+            $sum: {
+              $cond: [{ $eq: [{ $toUpper: "$status" }, "PASS"] }, 1, 0],
+            },
+          },
+        },
+      },
+    ]);
+
+    const base = stats[0] || {
+      totalCandidates: 0,
+      avgScore: 0,
+      maxScore: 0,
+      minScore: 0,
+      passCount: 0,
+    };
+
+    const failCount = base.totalCandidates - base.passCount;
+
+    res.json({
+      ...base,
+      avgScore: Number((base.avgScore || 0).toFixed(2)),
+      failCount,
+    });
+  } catch (err) {
+    console.error("dashboard error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ==============================
+// COMPARE EXAMS
+// ==============================
+export const compareExams = async (req, res) => {
+  try {
+    const { examIds } = req.body;
+
+    if (!examIds || examIds.length < 2) {
+      return res.status(400).json({
+        message: "Provide at least 2 examIds",
+      });
+    }
+
+    const results = await Result.find({
+      examId: { $in: examIds.map(toObjectId) },
+    });
+
+    const examMap = {};
+
+    results.forEach((r) => {
+      const id = r.examId.toString();
+
+      if (!examMap[id]) {
+        examMap[id] = {
+          total: 0,
+          pass: 0,
+          fail: 0,
+          scores: [],
+        };
+      }
+
+      examMap[id].total += 1;
+      examMap[id].scores.push(r.average);
+
+      if (r.status?.toUpperCase() === "PASS") examMap[id].pass += 1;
+      else examMap[id].fail += 1;
+    });
+
+    const comparison = Object.entries(examMap).map(([examId, data]) => {
+      const avg = data.scores.reduce((a, b) => a + b, 0) / data.scores.length;
+
+      return {
+        examId,
+        totalCandidates: data.total,
+        avgScore: Number(avg.toFixed(2)),
+        passRate: Number(((data.pass / data.total) * 100).toFixed(2)),
+      };
+    });
+
+    res.json({ comparison });
+  } catch (err) {
+    console.error("compareExams error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// ==============================
+// SCORE BAND ANALYSIS (CORRECTED)
+// ==============================
+export const getScoreBandAnalysis = async (req, res) => {
+  try {
+    const { examId } = req.query;
+
+    if (!examId || !isValidId(examId)) {
+      return res.status(400).json({ message: "Valid examId is required" });
+    }
+
+    const bands = await Result.aggregate([
+      { $match: { examId: toObjectId(examId) } },
+
+      {
+        $project: {
+          score: "$average",
+        },
+      },
+
+      {
+        $bucket: {
+          groupBy: "$score",
+          boundaries: [0, 50, 60, 70, 101],
+          default: "others",
+          output: {
+            count: { $sum: 1 },
+          },
+        },
+      },
+    ]);
+
+    let result = {
+      fail: 0,
+      pass: 0,
+      credit: 0,
+      distinction: 0,
+    };
+
+    bands.forEach((b) => {
+      if (b._id === 0) result.fail = b.count;
+      if (b._id === 50) result.pass = b.count;
+      if (b._id === 60) result.credit = b.count;
+      if (b._id === 70) result.distinction = b.count;
+    });
+
+    const total =
+      result.fail + result.pass + result.credit + result.distinction;
+
+    res.json({
+      total,
+      bands: result,
+      percentages: {
+        fail: total ? ((result.fail / total) * 100).toFixed(2) : 0,
+        pass: total ? ((result.pass / total) * 100).toFixed(2) : 0,
+        credit: total ? ((result.credit / total) * 100).toFixed(2) : 0,
+        distinction: total
+          ? ((result.distinction / total) * 100).toFixed(2)
+          : 0,
+      },
+    });
+  } catch (err) {
+    console.error("Score band error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Helper function to get the highest band
+const getHighestBand = (bands) => {
+  if (bands.distinction > 0) return "Distinction";
+  if (bands.credit > 0) return "Credit";
+  if (bands.pass > 0) return "Pass";
+  return "Fail";
+};
+
+export const getProgrammeAnalytics = async (req, res) => {
   try {
     const { examId } = req.query;
 
@@ -203,208 +259,225 @@ export const getDashboardStats = async (req, res) => {
 
     const match = { examId: toObjectId(examId) };
 
-    const results = await Result.find(match);
+    const total = await Result.countDocuments(match);
 
-    if (!results.length) {
-      return res.json({
-        totalCandidates: 0,
-        avgScore: 0,
-        maxScore: 0,
-        minScore: 0,
-        passCount: 0,
-        failCount: 0,
-        scoreDistribution: [],
-        topStates: [],
-        topSchools: [],
-        topCandidates: [],
-      });
-    }
+    const programmes = await Result.aggregate([
+      { $match: match },
 
-    // ==============================
-    // BASIC STATS
-    // ==============================
-    const totalCandidates = results.length;
+      {
+        $group: {
+          _id: "$programme",
+          count: { $sum: 1 },
+          avgScore: { $avg: "$average" },
+        },
+      },
 
-    const scores = results.map((r) => r.score);
+      { $sort: { count: -1 } },
 
-    const avgScore = scores.reduce((a, b) => a + b, 0) / totalCandidates;
+      {
+        $project: {
+          _id: 0,
+          programme: "$_id",
+          count: 1,
+          avgScore: { $round: ["$avgScore", 2] },
+          percentage: {
+            $round: [{ $multiply: [{ $divide: ["$count", total] }, 100] }, 2],
+          },
+        },
+      },
+    ]);
 
-    const maxScore = Math.max(...scores);
-    const minScore = Math.min(...scores);
+    // 🔎 UNKNOWN %
+    const unknown = programmes.find((p) => p.programme === "UNKNOWN PROGRAMME");
 
-    const passCount = results.filter((r) => r.status === "Pass").length;
-    const failCount = totalCandidates - passCount;
+    const unknownPercentage = unknown ? unknown.percentage : 0;
 
-    // ==============================
-    // SCORE DISTRIBUTION
-    // ==============================
-    const distribution = {
-      "0-49": 0,
-      "50-59": 0,
-      "60-69": 0,
-      "70-100": 0,
-    };
-
-    results.forEach((r) => {
-      if (r.score < 50) distribution["0-49"]++;
-      else if (r.score < 60) distribution["50-59"]++;
-      else if (r.score < 70) distribution["60-69"]++;
-      else distribution["70-100"]++;
-    });
-
-    const scoreDistribution = Object.keys(distribution).map((key) => ({
-      range: key,
-      count: distribution[key],
-    }));
-
-    // ==============================
-    // TOP CANDIDATES
-    // ==============================
-    const topCandidates = results
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10)
-      .map((r) => ({
-        name: r.name,
-        regNumber: r.regNumber,
-        score: r.score,
-      }));
-
-    // ==============================
-    // TOP SCHOOLS
-    // ==============================
-    const schoolMap = {};
-
-    results.forEach((r) => {
-      if (!schoolMap[r.school]) {
-        schoolMap[r.school] = {
-          total: 0,
-          count: 0,
-        };
-      }
-
-      schoolMap[r.school].total += r.score;
-      schoolMap[r.school].count += 1;
-    });
-
-    const topSchools = Object.entries(schoolMap)
-      .map(([school, data]) => ({
-        school,
-        avgScore: (data.total / data.count).toFixed(2),
-      }))
-      .sort((a, b) => b.avgScore - a.avgScore)
-      .slice(0, 10);
-
-    // ==============================
-    // TOP STATES (PASS RATE)
-    // ==============================
-    const stateMap = {};
-
-    results.forEach((r) => {
-      if (!stateMap[r.state]) {
-        stateMap[r.state] = { pass: 0, total: 0 };
-      }
-
-      stateMap[r.state].total += 1;
-      if (r.status === "Pass") stateMap[r.state].pass += 1;
-    });
-
-    const topStates = Object.entries(stateMap)
-      .map(([state, data]) => ({
-        state,
-        passRate: ((data.pass / data.total) * 100).toFixed(2),
-      }))
-      .sort((a, b) => b.passRate - a.passRate)
-      .slice(0, 10);
-
-    // ==============================
-    // RESPONSE
-    // ==============================
     res.json({
-      totalCandidates,
-      avgScore,
-      maxScore,
-      minScore,
-      passCount,
-      failCount,
-      scoreDistribution,
-      topCandidates,
-      topSchools,
-      topStates,
+      total,
+      unknownPercentage,
+      programmes,
     });
   } catch (err) {
-    console.error("❌ ANALYTICS ERROR:", err);
+    console.error("getProgrammeAnalytics error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
 // ==============================
-// MULTI EXAM COMPARISON
-// ==============================
-export const compareExams = async (req, res) => {
+// TOP SCHOOLS
+// ==========================
+export const getTopSchools = async (req, res) => {
   try {
-    const { examIds } = req.body;
+    const { examId } = req.query;
 
-    if (!examIds || !Array.isArray(examIds) || examIds.length < 2) {
-      return res.status(400).json({
-        message: "Provide at least 2 examIds in an array",
-      });
+    if (!examId || !isValidId(examId)) {
+      return res.status(400).json({ message: "Valid examId is required" });
     }
 
-    const objectIds = examIds.map((id) => toObjectId(id));
+    const schools = await Result.aggregate([
+      { $match: { examId: toObjectId(examId) } },
 
-    const results = await Result.find({
-      examId: { $in: objectIds },
-    });
+      {
+        $group: {
+          _id: "$school",
+          avgScore: { $avg: "$average" },
+          totalStudents: { $sum: 1 },
+        },
+      },
 
-    // ==============================
-    // GROUP BY EXAM
-    // ==============================
-    const examMap = {};
+      { $sort: { avgScore: -1 } },
+      { $limit: 10 },
 
-    results.forEach((r) => {
-      const id = r.examId.toString();
+      {
+        $project: {
+          _id: 0,
+          school: "$_id",
+          avgScore: { $round: ["$avgScore", 2] },
+          totalStudents: 1,
+        },
+      },
+    ]);
 
-      if (!examMap[id]) {
-        examMap[id] = {
-          examId: id,
-          total: 0,
-          pass: 0,
-          fail: 0,
-          scores: [],
-        };
-      }
-
-      examMap[id].total += 1;
-      examMap[id].scores.push(r.score);
-
-      if (r.status === "Pass") examMap[id].pass += 1;
-      else examMap[id].fail += 1;
-    });
-
-    // ==============================
-    // FORMAT RESPONSE
-    // ==============================
-    const comparison = Object.values(examMap).map((exam) => {
-      const avg = exam.scores.reduce((a, b) => a + b, 0) / exam.total;
-
-      const passRate = (exam.pass / exam.total) * 100;
-
-      return {
-        examId: exam.examId,
-        totalCandidates: exam.total,
-        avgScore: Number(avg.toFixed(2)),
-        passRate: Number(passRate.toFixed(2)),
-        passCount: exam.pass,
-        failCount: exam.fail,
-      };
-    });
-
-    res.json({
-      comparison,
-    });
+    res.json({ data: schools });
   } catch (err) {
-    console.error("❌ COMPARE ERROR:", err);
+    console.error("getTopSchools error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
+export const getScoreTrend = async (req, res) => {
+  try {
+    const { examId } = req.query;
+
+    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
+      return res.status(400).json({ message: "Valid examId is required" });
+    }
+
+    const trend = await Result.aggregate([
+      {
+        $match: {
+          examId: new mongoose.Types.ObjectId(examId),
+        },
+      },
+
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: "$createdAt",
+            },
+          },
+          averageScore: { $avg: "$average" },
+          count: { $sum: 1 },
+        },
+      },
+
+      {
+        $sort: { _id: 1 },
+      },
+
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          averageScore: { $round: ["$averageScore", 2] },
+          count: 1,
+        },
+      },
+    ]);
+
+    res.json({ data: trend });
+  } catch (error) {
+    console.error("score trend error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getTop10Schools = async (req, res) => {
+  try {
+    const { examId, limit = 10 } = req.query;
+
+    // ✅ Validate examId
+    if (!examId || !mongoose.Types.ObjectId.isValid(examId)) {
+      return res.status(400).json({
+        message: "Valid examId is required",
+      });
+    }
+
+    const match = { examId: toObjectId(examId) };
+
+    // 🔢 Total students (for percentage share if needed)
+    const totalStudents = await Result.countDocuments(match);
+
+    const schools = await Result.aggregate([
+      { $match: match },
+
+      {
+        $group: {
+          _id: "$school",
+          avgScore: { $avg: "$average" },
+          totalStudents: { $sum: 1 },
+
+          passCount: {
+            $sum: {
+              $cond: [
+                { $eq: [{ $toUpper: "$status" }, "PASS"] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          passRate: {
+            $multiply: [
+              { $divide: ["$passCount", "$totalStudents"] },
+              100,
+            ],
+          },
+
+          // Optional: % contribution to total candidates
+          percentage: {
+            $multiply: [
+              { $divide: ["$totalStudents", totalStudents] },
+              100,
+            ],
+          },
+        },
+      },
+
+      { $sort: { avgScore: -1 } },
+      { $limit: Number(limit) },
+
+      {
+        $project: {
+          _id: 0,
+          school: "$_id",
+          avgScore: { $round: ["$avgScore", 2] },
+          totalStudents: 1,
+          passRate: { $round: ["$passRate", 2] },
+          percentage: { $round: ["$percentage", 2] }, // optional but useful
+        },
+      },
+    ]);
+
+    res.json({
+      data: schools,
+      meta: {
+        totalSchools: schools.length,
+        totalCandidates: totalStudents,
+      },
+    });
+  } catch (err) {
+    console.error("getTop10Schools error:", err);
+    res.status(500).json({
+      message: "Failed to fetch top schools",
+      error: err.message,
+    });
+  }
+};

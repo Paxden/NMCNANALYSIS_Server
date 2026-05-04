@@ -3,56 +3,51 @@ import {
   getDashboardStats,
   getTopCandidates,
   getTopSchools,
-  getStatePerformance,
-  getTopCentres,
+  getTop10Schools,
+  // getTopCandidatesBySchool,
   getScoreDistribution,
   compareExams,
+  getScoreBandAnalysis,
+  getProgrammeAnalytics,
+  getScoreTrend, // ✅ move logic to controller
 } from "../controllers/analyticsController.js";
+
 import { protect } from "../middleware/AuthMiddleware.js";
 
 const router = express.Router();
 
-router.use(protect); // 🔥 protect ALL analytics routes
+// 🔐 Protect all routes
+router.use(protect);
 
+// ==============================
+// 📊 CORE DASHBOARD
+// ==============================
 router.get("/stats", getDashboardStats);
-router.get("/top-candidates", getTopCandidates);
-router.get("/top-schools", getTopSchools);
-router.get("/states", getStatePerformance);
-router.get("/centres", getTopCentres);
 router.get("/distribution", getScoreDistribution);
+router.get("/score-bands", getScoreBandAnalysis);
 
-router.get("/score-trend", async (req, res) => {
-  try {
-    const { examId } = req.query;
+// ==============================
+// 🏆 PERFORMANCE
+// ==============================
+router.get("/top-candidates", getTopCandidates);
+// router.get("/top-candidates-by-school", getTopCandidatesBySchool);
 
-    const submissions = await Submission.find({ examId }).sort({
-      createdAt: 1,
-    });
+router.get("/top-schools", getTopSchools);      // avg score ranking
+router.get("/top-10-schools", getTop10Schools);   // top 10 schools
 
-    // Group by date or week
-    const trendData = [];
-    const weekSize = 7;
+// ==============================
+// 📘 PROGRAMMES
+// ==============================
+router.get("/programme-analytics", getProgrammeAnalytics);
 
-    for (let i = 0; i < submissions.length; i += weekSize) {
-      const weekSubmissions = submissions.slice(i, i + weekSize);
-      const avgScore =
-        weekSubmissions.reduce((sum, sub) => sum + sub.score, 0) /
-        weekSubmissions.length;
+// ==============================
+// 📈 TRENDS
+// ==============================
+router.get("/score-trend", getScoreTrend);
 
-      trendData.push({
-        period: `Week ${Math.floor(i / weekSize) + 1}`,
-        averageScore: avgScore,
-        count: weekSubmissions.length,
-        startDate: weekSubmissions[0]?.createdAt,
-        endDate: weekSubmissions[weekSubmissions.length - 1]?.createdAt,
-      });
-    }
-
-    res.json({ data: trendData });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
+// ==============================
+// 🔄 COMPARISON
+// ==============================
 router.post("/compare", compareExams);
+
 export default router;

@@ -11,7 +11,15 @@ const resultSchema = new mongoose.Schema(
     school: String,
     state: String,
     centre: String,
-    score: Number,
+
+    programmeCode: String, // ✅ ADD
+    programme: String,
+
+    paper1: Number,
+    paper2: Number,
+    osce: Number,
+    average: Number,
+
     grade: String,
     status: String,
   },

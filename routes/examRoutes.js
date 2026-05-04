@@ -4,6 +4,7 @@ import {
   uploadExamResults,
   getUserExams,
   getExamById,
+  deleteExam,
 } from "../controllers/examController.js";
 import { protect } from "../middleware/AuthMiddleware.js";
 
@@ -16,5 +17,10 @@ router.get("/", protect, getUserExams);
 router.get("/:id", getExamById);
 
 router.post("/upload", protect, upload.single("file"), uploadExamResults);
+
+// ==============================
+// Delete exam
+// ==============================
+router.delete("/:id", protect, deleteExam);
 
 export default router;

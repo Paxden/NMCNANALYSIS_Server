@@ -269,6 +269,22 @@ export const getProgrammeAnalytics = async (req, res) => {
           _id: "$programme",
           count: { $sum: 1 },
           avgScore: { $avg: "$average" },
+
+          // ✅ count PASS
+          passCount: {
+            $sum: {
+              $cond: [{ $eq: [{ $toUpper: "$status" }, "PASS"] }, 1, 0],
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          // ✅ pass rate %
+          passRate: {
+            $multiply: [{ $divide: ["$passCount", "$count"] }, 100],
+          },
         },
       },
 
@@ -279,7 +295,10 @@ export const getProgrammeAnalytics = async (req, res) => {
           _id: 0,
           programme: "$_id",
           count: 1,
+
           avgScore: { $round: ["$avgScore", 2] },
+          passRate: { $round: ["$passRate", 2] },
+
           percentage: {
             $round: [{ $multiply: [{ $divide: ["$count", total] }, 100] }, 2],
           },
@@ -394,7 +413,6 @@ export const getScoreTrend = async (req, res) => {
   }
 };
 
-
 export const getTop10Schools = async (req, res) => {
   try {
     const { examId, limit = 10 } = req.query;
@@ -422,11 +440,7 @@ export const getTop10Schools = async (req, res) => {
 
           passCount: {
             $sum: {
-              $cond: [
-                { $eq: [{ $toUpper: "$status" }, "PASS"] },
-                1,
-                0,
-              ],
+              $cond: [{ $eq: [{ $toUpper: "$status" }, "PASS"] }, 1, 0],
             },
           },
         },
@@ -435,18 +449,12 @@ export const getTop10Schools = async (req, res) => {
       {
         $addFields: {
           passRate: {
-            $multiply: [
-              { $divide: ["$passCount", "$totalStudents"] },
-              100,
-            ],
+            $multiply: [{ $divide: ["$passCount", "$totalStudents"] }, 100],
           },
 
           // Optional: % contribution to total candidates
           percentage: {
-            $multiply: [
-              { $divide: ["$totalStudents", totalStudents] },
-              100,
-            ],
+            $multiply: [{ $divide: ["$totalStudents", totalStudents] }, 100],
           },
         },
       },
@@ -479,5 +487,139 @@ export const getTop10Schools = async (req, res) => {
       message: "Failed to fetch top schools",
       error: err.message,
     });
+  }
+};
+
+// School details
+export const getSchoolDetails = async (req, res) => {
+  try {
+    const { examId, school } = req.query;
+
+    if (!examId || !school) {
+      return res.status(400).json({ message: "Missing params" });
+    }
+
+    const data = await Result.aggregate([
+      {
+        $match: {
+          examId: toObjectId(examId),
+          school: school,
+        },
+      },
+
+      {
+        $group: {
+          _id: "$school",
+          state: { $first: "$state" },
+
+          totalCandidates: { $sum: 1 },
+
+          passCount: {
+            $sum: {
+              $cond: [{ $eq: [{ $toUpper: "$status" }, "PASS"] }, 1, 0],
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          failCount: {
+            $subtract: ["$totalCandidates", "$passCount"],
+          },
+          passRate: {
+            $multiply: [{ $divide: ["$passCount", "$totalCandidates"] }, 100],
+          },
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+          school: "$_id",
+          state: 1,
+          totalCandidates: 1,
+          passCount: 1,
+          failCount: 1,
+          passRate: { $round: ["$passRate", 2] },
+        },
+      },
+    ]);
+
+    res.json(data[0] || {});
+  } catch (err) {
+    console.error("school details error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// program details
+export const getProgrammeDetails = async (req, res) => {
+  try {
+    const { examId, programme } = req.query;
+
+    if (!examId || !programme) {
+      return res.status(400).json({ message: "Missing params" });
+    }
+
+    const data = await Result.aggregate([
+      {
+        $match: {
+          examId: toObjectId(examId),
+          programme: programme,
+        },
+      },
+
+      {
+        $group: {
+          _id: "$programme",
+
+          totalCandidates: { $sum: 1 },
+
+          avgScore: { $avg: "$average" },
+
+          passCount: {
+            $sum: {
+              $cond: [
+                { $eq: [{ $toUpper: "$status" }, "PASS"] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          failCount: {
+            $subtract: ["$totalCandidates", "$passCount"],
+          },
+          passRate: {
+            $multiply: [
+              { $divide: ["$passCount", "$totalCandidates"] },
+              100,
+            ],
+          },
+        },
+      },
+
+      {
+        $project: {
+          _id: 0,
+          programme: "$_id",
+          totalCandidates: 1,
+          passCount: 1,
+          failCount: 1,
+          avgScore: { $round: ["$avgScore", 2] },
+          passRate: { $round: ["$passRate", 2] },
+        },
+      },
+    ]);
+
+    res.json(data[0] || {});
+  } catch (err) {
+    console.error("programme details error:", err);
+    res.status(500).json({ message: err.message });
   }
 };

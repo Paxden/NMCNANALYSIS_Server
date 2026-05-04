@@ -9,7 +9,10 @@ import {
   compareExams,
   getScoreBandAnalysis,
   getProgrammeAnalytics,
-  getScoreTrend, // ✅ move logic to controller
+  getSchoolDetails,
+  getProgrammeDetails,
+  getScoreTrend, 
+  // ✅ move logic to controller
 } from "../controllers/analyticsController.js";
 
 import { protect } from "../middleware/AuthMiddleware.js";
@@ -34,12 +37,13 @@ router.get("/top-candidates", getTopCandidates);
 
 router.get("/top-schools", getTopSchools);      // avg score ranking
 router.get("/top-10-schools", getTop10Schools);   // top 10 schools
+router.get("/school-details", getSchoolDetails); // individual school details
 
 // ==============================
 // 📘 PROGRAMMES
 // ==============================
 router.get("/programme-analytics", getProgrammeAnalytics);
-
+router.get("/programme-details", getProgrammeDetails);
 // ==============================
 // 📈 TRENDS
 // ==============================

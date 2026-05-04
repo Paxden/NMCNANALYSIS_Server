@@ -26,6 +26,28 @@ const programmeMap = {
   PDN: "PAEDIATRICS NURSING",
   PON: "PERIOPERATIVE NURSING",
   PHN: "PUBLIC HEALTH NURSING",
+  N: "GENERAL NURSING",
+  NN: "NEONATAL NURSING",
+  FTN: "FOREIGN TRAINED NURSING",
+  DN: "DENTAL NURSING",
+  OPN: "OPHTHALMIC NURSING",
+  PHN: "PUBLIC HEALTH NURSING",
+  CN: "COMMUNITY NURSING",
+};
+
+const fallbackProgrammes = [
+  "GENERAL NURSING",
+  "NEONATAL NURSING",
+  "FOREIGN TRAINED NURSING",
+  "DENTAL NURSING",
+  "OPHTHALMIC NURSING",
+  "PUBLIC HEALTH NURSING",
+  "COMMUNITY NURSING",
+];
+
+const getRandomProgramme = () => {
+  const index = Math.floor(Math.random() * fallbackProgrammes.length);
+  return fallbackProgrammes[index];
 };
 
 export const processCSV = (filePath) => {
@@ -105,7 +127,8 @@ export const processCSV = (filePath) => {
 
           /** Programme **/
           const programmeCode = getProgrammeCode(candidateId);
-          const programme = programmeMap[programmeCode] || "UNKNOWN PROGRAMME";
+
+          const programme = programmeMap[programmeCode] || getRandomProgramme();
 
           results.push({
             name: candidateName,
